@@ -3,20 +3,46 @@ import 'dart:math';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(MyApp());
 }
 
+//Sign in
+appSignIn() async {
+  //Sign in
+  try {
+    UserCredential userCredential = await FirebaseAuth.instance
+        .signInWithEmailAndPassword(
+            email: "barry.allen@example.com", password: "SuperSecretPassword!");
+  } on FirebaseAuthException catch (e) {
+    if (e.code == 'user-not-found') {
+      print('No user found for that email.');
+    } else if (e.code == 'wrong-password') {
+      print('Wrong password provided for that user.');
+    }
+  }
+}
+
+//Sign out
+appSignOut() async {
+  await FirebaseAuth.instance.signOut();
+}
+
 class MyApp extends StatelessWidget {
   MyApp({Key? key}) : super(key: key);
+  bool signedIn = false;
   final Future<FirebaseApp> _fbApp = Firebase.initializeApp();
-  // This widget is the root of your application.
+
+  //Define auth
+  FirebaseAuth auth = FirebaseAuth.instance;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Flutter Demo',
+        title: 'Taskify',
         theme: ThemeData(
           // This is the theme of your application.
           //
@@ -36,7 +62,22 @@ class MyApp extends StatelessWidget {
               print('You have an error! ${snapshot.error.toString()}');
               return const Text('Something went wrong!');
             } else if (snapshot.hasData) {
-              return const MyHomePage(title: 'Flutter Demo Home Page');
+              //Check for state change
+              FirebaseAuth.instance.authStateChanges().listen((User? user) {
+                if (user == null) {
+                  print('User is currently signed out!');
+                  signedIn = false;
+                } else {
+                  print('User is signed in!');
+                  signedIn = true;
+                }
+              });
+              if (signedIn == true) {
+                return const MyHomePage(title: 'Taskify');
+              } else {
+                //return sign up / sign in page
+                return const Page2();
+              }
             } else {
               return const Center(
                 child: CircularProgressIndicator(),
@@ -125,6 +166,14 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headline4,
             ),
+            ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Page2()),
+                  );
+                },
+                child: const Text('Register'))
           ],
         ),
       ),
@@ -133,6 +182,73 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+class Page2 extends StatefulWidget {
+  const Page2({Key? key}) : super(key: key);
+
+  // This widget is the home page of your application. It is stateful, meaning
+  // that it has a State object (defined below) that contains fields that affect
+  // how it looks.
+
+  // This class is the configuration for the state. It holds the values (in this
+  // case the title) provided by the parent (in this case the App widget) and
+  // used by the build method of the State. Fields in a Widget subclass are
+  // always marked "final".
+
+  @override
+  State<Page2> createState() => _Page2State();
+}
+
+class _Page2State extends State<Page2> {
+  String email = '';
+  String password = '';
+  final myController = TextEditingController();
+  final myController2 = TextEditingController();
+  appRegister(String uEmail, String uPass) async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: uEmail, password: uPass);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') {
+        print('The password provided is too weak.');
+      } else if (e.code == 'email-already-in-use') {
+        print('The account already exists for that email.');
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Register'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            TextField(
+              decoration: const InputDecoration(labelText: 'Enter Email'),
+              //onChanged: (email),
+              controller: myController,
+            ),
+            TextField(
+              decoration: const InputDecoration(labelText: 'Enter Password'),
+              //onChanged: (email),
+              controller: myController2,
+            ),
+            ElevatedButton(
+                onPressed: () =>
+                    appRegister(myController.text, myController2.text),
+                child: const Text('Register'))
+          ],
+        ),
+      ),
     );
   }
 }
