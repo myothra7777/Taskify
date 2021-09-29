@@ -1,4 +1,4 @@
-import 'dart:math';
+//import 'dart:math';
 
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +56,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  final stringController = TextEditingController();
 
   appSignOut() async {
     await FirebaseAuth.instance.signOut();
@@ -65,15 +66,21 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void _incrementCounter() {
-    DatabaseReference _testRef =
-        FirebaseDatabase.instance.reference().child("test");
-    _testRef.set("Hello world ${Random().nextInt(100)}");
-
-    setState(() {
-      _counter++;
-    });
+  createTask(String uTask) {
+    DatabaseReference _testRef = FirebaseDatabase.instance.reference();
+    _testRef
+        .push()
+        .set({'task': uTask, 'user': auth.currentUser.email ??= 'noUser'});
   }
+
+  //void _incrementCounter() {
+  //  DatabaseReference _testRef =
+  //      FirebaseDatabase.instance.reference().child("test");
+  //  _testRef.set("Hello world ${Random().nextInt(100)}");
+  //  setState(() {
+  //    _counter++;
+  //  });
+  //}
 
   @override
   Widget build(BuildContext context) {
@@ -93,14 +100,17 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headline4,
             ),
-            ElevatedButton(onPressed: appSignOut, child: const Text('Sign Out'))
+            ElevatedButton(
+                onPressed: appSignOut, child: const Text('Sign Out')),
+            TextField(
+              decoration: const InputDecoration(labelText: 'Enter A Task'),
+              controller: stringController,
+            ),
+            ElevatedButton(
+                onPressed: () => createTask(stringController.text),
+                child: Text("Submit Task")),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -118,6 +128,7 @@ class _Page2State extends State<Page2> {
   final myController2 = TextEditingController();
   appRegister(String uEmail, String uPass) async {
     try {
+      // ignore: unused_local_variable
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: uEmail, password: uPass);
     } on FirebaseAuthException catch (e) {
@@ -145,9 +156,9 @@ class _Page2State extends State<Page2> {
 
   appSignIn(String uEmail, String uPass) async {
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance //Is this necessary???
-              .signInWithEmailAndPassword(email: uEmail, password: uPass);
+      // ignore: unused_local_variable
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: uEmail, password: uPass);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         print('No user found for that email.');
