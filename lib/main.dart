@@ -46,6 +46,114 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+class CreateTask extends StatefulWidget {
+  CreateTask({Key? key}) : super(key: key); //added required
+
+  @override
+  _CreateTaskState createState() => _CreateTaskState();
+}
+
+class _CreateTaskState extends State<CreateTask> {
+  final _formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
+  final ageController = TextEditingController();
+  final dbRef = FirebaseDatabase.instance.reference().child("tasks");
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+            child: Column(children: <Widget>[
+          Padding(
+            padding: EdgeInsets.all(20.0),
+            child: TextFormField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: "Enter Task",
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+              // The validator receives the text that the user has entered.
+              validator: (value) {
+                if (value!.isEmpty) {
+                  //Added !
+                  return 'Enter Task';
+                }
+                return null;
+              },
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(20.0),
+            child: TextFormField(
+              keyboardType: TextInputType.datetime,
+              controller: ageController,
+              decoration: InputDecoration(
+                labelText: "Enter Due Date",
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+              // The validator receives the text that the user has entered.
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Enter Due Date';
+                }
+                return null;
+              },
+            ),
+          ),
+          Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        //Added !
+                        dbRef.push().set({
+                          "TaskName": nameController.text,
+                          "DueDate": ageController.text,
+                        }).then((_) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Successfully Added')));
+                          ageController.clear();
+                          nameController.clear();
+                        }).catchError((onError) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(onError)));
+                        });
+                      }
+                    },
+                    child: Text('Submit'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                MyHomePage(title: "Home Page")),
+                      );
+                    },
+                    child: Text('Refresh'),
+                  ),
+                ],
+              )),
+        ])));
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    ageController.dispose();
+    nameController.dispose();
+  }
+}
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
   final String title;
@@ -55,8 +163,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  final stringController = TextEditingController();
+  final dbRef = FirebaseDatabase.instance.reference().child("tasks");
+  var lists = [];
 
   appSignOut() async {
     await FirebaseAuth.instance.signOut();
@@ -66,22 +174,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  createTask(String uTask) {
-    DatabaseReference _testRef = FirebaseDatabase.instance.reference();
-    _testRef
-        .push()
-        .set({'task': uTask, 'user': auth.currentUser.email ??= 'noUser'});
-  }
-
-  //void _incrementCounter() {
-  //  DatabaseReference _testRef =
-  //      FirebaseDatabase.instance.reference().child("test");
-  //  _testRef.set("Hello world ${Random().nextInt(100)}");
-  //  setState(() {
-  //    _counter++;
-  //  });
-  //}
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,26 +182,49 @@ class _MyHomePageState extends State<MyHomePage> {
         automaticallyImplyLeading: false,
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-            ElevatedButton(
-                onPressed: appSignOut, child: const Text('Sign Out')),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Enter A Task'),
-              controller: stringController,
-            ),
-            ElevatedButton(
-                onPressed: () => createTask(stringController.text),
-                child: Text("Submit Task")),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Text(
+                'Current Tasks:',
+                style: TextStyle(
+                    fontWeight: FontWeight.w200,
+                    fontSize: 30,
+                    fontFamily: 'Roboto',
+                    fontStyle: FontStyle.italic),
+              ),
+              FutureBuilder(
+                  future: dbRef.once(),
+                  builder: (context, AsyncSnapshot<DataSnapshot> snapshot) {
+                    if (snapshot.hasData) {
+                      lists.clear();
+                      Map<dynamic, dynamic> values = snapshot.data!.value;
+                      values.forEach((key, values) {
+                        lists.add(values);
+                      });
+                      return new ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: lists.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return Card(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(lists[index]["TaskName"]),
+                                  Text("Due Date: " + lists[index]["DueDate"]),
+                                ],
+                              ),
+                            );
+                          });
+                    }
+                    return CircularProgressIndicator();
+                  }),
+              CreateTask(),
+              ElevatedButton(
+                  onPressed: appSignOut, child: const Text('Sign Out')),
+            ],
+          ),
         ),
       ),
     );
@@ -196,6 +311,7 @@ class _Page2State extends State<Page2> {
               controller: myController,
             ),
             TextField(
+              obscureText: true,
               decoration: const InputDecoration(labelText: 'Enter Password'),
               controller: myController2,
             ),
