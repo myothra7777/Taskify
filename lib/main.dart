@@ -35,7 +35,7 @@ class _MyAppState extends State<MyApp> {
               print('You have an error! ${snapshot.error.toString()}');
               return const Text('Something went wrong!');
             } else if (snapshot.hasData) {
-              return Page2();
+              return Auth();
             } else {
               return const Center(
                 child: CircularProgressIndicator(),
@@ -55,9 +55,10 @@ class CreateTask extends StatefulWidget {
 
 class _CreateTaskState extends State<CreateTask> {
   final _formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController();
-  final ageController = TextEditingController();
+  final taskController = TextEditingController();
+  final dateController = TextEditingController();
   final dbRef = FirebaseDatabase.instance.reference().child("tasks");
+  User? usr = auth.currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +69,7 @@ class _CreateTaskState extends State<CreateTask> {
           Padding(
             padding: EdgeInsets.all(20.0),
             child: TextFormField(
-              controller: nameController,
+              controller: taskController,
               decoration: InputDecoration(
                 labelText: "Enter Task",
                 enabledBorder: OutlineInputBorder(
@@ -89,7 +90,15 @@ class _CreateTaskState extends State<CreateTask> {
             padding: EdgeInsets.all(20.0),
             child: TextFormField(
               keyboardType: TextInputType.datetime,
-              controller: ageController,
+              controller: dateController,
+              onTap: () async {
+                var date = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime(2100));
+                dateController.text = date.toString().substring(0, 10);
+              },
               decoration: InputDecoration(
                 labelText: "Enter Due Date",
                 enabledBorder: OutlineInputBorder(
@@ -115,13 +124,14 @@ class _CreateTaskState extends State<CreateTask> {
                       if (_formKey.currentState!.validate()) {
                         //Added !
                         dbRef.push().set({
-                          "TaskName": nameController.text,
-                          "DueDate": ageController.text,
+                          "User": usr!.email,
+                          "TaskName": taskController.text,
+                          "DueDate": dateController.text,
                         }).then((_) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Successfully Added')));
-                          ageController.clear();
-                          nameController.clear();
+                          dateController.clear();
+                          taskController.clear();
                         }).catchError((onError) {
                           ScaffoldMessenger.of(context)
                               .showSnackBar(SnackBar(content: Text(onError)));
@@ -136,7 +146,7 @@ class _CreateTaskState extends State<CreateTask> {
                         context,
                         MaterialPageRoute(
                             builder: (context) =>
-                                MyHomePage(title: "Home Page")),
+                                MyHomePage(title: "Current Tasks")),
                       );
                     },
                     child: Text('Refresh'),
@@ -149,8 +159,8 @@ class _CreateTaskState extends State<CreateTask> {
   @override
   void dispose() {
     super.dispose();
-    ageController.dispose();
-    nameController.dispose();
+    dateController.dispose();
+    taskController.dispose();
   }
 }
 
@@ -165,12 +175,13 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final dbRef = FirebaseDatabase.instance.reference().child("tasks");
   var lists = [];
+  User? usr = auth.currentUser;
 
   appSignOut() async {
     await FirebaseAuth.instance.signOut();
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Page2()),
+      MaterialPageRoute(builder: (context) => Auth()),
     );
   }
 
@@ -186,22 +197,16 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              const Text(
-                'Current Tasks:',
-                style: TextStyle(
-                    fontWeight: FontWeight.w200,
-                    fontSize: 30,
-                    fontFamily: 'Roboto',
-                    fontStyle: FontStyle.italic),
-              ),
               FutureBuilder(
-                  future: dbRef.once(),
+                  future: dbRef.orderByChild("DueDate").startAt("0").once(),
                   builder: (context, AsyncSnapshot<DataSnapshot> snapshot) {
                     if (snapshot.hasData) {
                       lists.clear();
                       Map<dynamic, dynamic> values = snapshot.data!.value;
                       values.forEach((key, values) {
-                        lists.add(values);
+                        if (values["User"] == usr!.email) {
+                          lists.add(values);
+                        }
                       });
                       return new ListView.builder(
                           shrinkWrap: true,
@@ -231,14 +236,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class Page2 extends StatefulWidget {
-  const Page2({Key? key}) : super(key: key);
+class Auth extends StatefulWidget {
+  const Auth({Key? key}) : super(key: key);
 
   @override
-  State<Page2> createState() => _Page2State();
+  State<Auth> createState() => _AuthState();
 }
 
-class _Page2State extends State<Page2> {
+class _AuthState extends State<Auth> {
   final myController = TextEditingController();
   final myController2 = TextEditingController();
   appRegister(String uEmail, String uPass) async {
