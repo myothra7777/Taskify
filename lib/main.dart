@@ -1,5 +1,3 @@
-//import 'dart:math';
-
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,7 +8,6 @@ Future<void> main() async {
   runApp(MyApp());
 }
 
-//Define auth (got errors when this was moved into app class)
 FirebaseAuth auth = FirebaseAuth.instance;
 
 class MyApp extends StatefulWidget {
@@ -47,7 +44,7 @@ class _MyAppState extends State<MyApp> {
 }
 
 class CreateTask extends StatefulWidget {
-  CreateTask({Key? key}) : super(key: key); //added required
+  CreateTask({Key? key}) : super(key: key);
 
   @override
   _CreateTaskState createState() => _CreateTaskState();
@@ -76,10 +73,8 @@ class _CreateTaskState extends State<CreateTask> {
                   borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
-              // The validator receives the text that the user has entered.
               validator: (value) {
                 if (value!.isEmpty) {
-                  //Added !
                   return 'Enter Task';
                 }
                 return null;
@@ -105,7 +100,6 @@ class _CreateTaskState extends State<CreateTask> {
                   borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
-              // The validator receives the text that the user has entered.
               validator: (value) {
                 if (value!.isEmpty) {
                   return 'Enter Due Date';
@@ -122,7 +116,6 @@ class _CreateTaskState extends State<CreateTask> {
                   ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        //Added !
                         dbRef.push().set({
                           "User": usr!.email,
                           "TaskName": taskController.text,
@@ -132,6 +125,12 @@ class _CreateTaskState extends State<CreateTask> {
                               SnackBar(content: Text('Successfully Added')));
                           dateController.clear();
                           taskController.clear();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    MyHomePage(title: "Current Tasks")),
+                          );
                         }).catchError((onError) {
                           ScaffoldMessenger.of(context)
                               .showSnackBar(SnackBar(content: Text(onError)));
@@ -139,17 +138,6 @@ class _CreateTaskState extends State<CreateTask> {
                       }
                     },
                     child: Text('Submit'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                MyHomePage(title: "Current Tasks")),
-                      );
-                    },
-                    child: Text('Refresh'),
                   ),
                 ],
               )),
@@ -173,15 +161,117 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final dbRef = FirebaseDatabase.instance.reference().child("tasks");
-  var lists = [];
-  User? usr = auth.currentUser;
+  static final dbRef = FirebaseDatabase.instance.reference().child("tasks");
+  static var lists = [];
+  //static completedTasks = [];
+  static User? usr = auth.currentUser;
+  final taskController = TextEditingController();
 
   appSignOut() async {
     await FirebaseAuth.instance.signOut();
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => Auth()),
+    );
+  }
+
+  editTask(values, taskName, taskDate) {
+    return Scaffold(
+        body: Center(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+          TextField(
+            decoration: InputDecoration(hintText: taskName),
+            controller: taskController,
+          ),
+          ElevatedButton(
+              onPressed: () =>
+                  updateTask(values, taskName, taskController.text, taskDate),
+              child: const Text('Submit')),
+        ])));
+  }
+
+  updateTask(values, taskName, newTaskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["User"] == usr!.email &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
+        childrenPathValueMap["${key}/TaskName"] = newTaskName;
+      }
+    });
+    dbRef.update(childrenPathValueMap);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => const MyHomePage(title: 'Taskify')),
+    );
+  }
+
+  markCompleted() {
+    //Add completed field to DB to toggle between complete and current then use this function to toggle
+  }
+
+  viewCompleted() {
+    //A COPY OF CLASS CODE TO BE MODIFIED TO VIEW COMPLETED
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        automaticallyImplyLeading: false,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              FutureBuilder(
+                  future: dbRef.orderByChild("DueDate").startAt("0").once(),
+                  builder: (context, AsyncSnapshot<DataSnapshot> snapshot) {
+                    if (snapshot.hasData) {
+                      lists.clear();
+                      Map<dynamic, dynamic> values = snapshot.data!.value;
+                      values.forEach((key, values) {
+                        if (values["User"] == usr!.email) {
+                          lists.add(values);
+                        }
+                      });
+                      return new ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: lists.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return Card(
+                                child: InkWell(
+                              splashColor: Colors.blue.withAlpha(30),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => editTask(
+                                          values,
+                                          lists[index]["TaskName"],
+                                          lists[index]["DueDate"])),
+                                );
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(lists[index]["TaskName"]),
+                                  Text("Due Date: " + lists[index]["DueDate"]),
+                                ],
+                              ),
+                            ));
+                          });
+                    }
+                    return CircularProgressIndicator();
+                  }),
+              CreateTask(),
+              ElevatedButton(
+                  onPressed: appSignOut, child: const Text('Sign Out')),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -213,6 +303,19 @@ class _MyHomePageState extends State<MyHomePage> {
                           itemCount: lists.length,
                           itemBuilder: (BuildContext context, int index) {
                             return Card(
+                                child: InkWell(
+                              splashColor: Colors.blue.withAlpha(30),
+                              onLongPress: markCompleted,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => editTask(
+                                          values,
+                                          lists[index]["TaskName"],
+                                          lists[index]["DueDate"])),
+                                );
+                              },
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
@@ -220,7 +323,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   Text("Due Date: " + lists[index]["DueDate"]),
                                 ],
                               ),
-                            );
+                            ));
                           });
                     }
                     return CircularProgressIndicator();
@@ -253,9 +356,9 @@ class _AuthState extends State<Auth> {
           .createUserWithEmailAndPassword(email: uEmail, password: uPass);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
-        print('The password provided is too weak.');
+        Text('The password provided is too weak.');
       } else if (e.code == 'email-already-in-use') {
-        print('The account already exists for that email.');
+        Text('The account already exists for that email.');
       }
     } catch (e) {
       print(e);
@@ -281,9 +384,9 @@ class _AuthState extends State<Auth> {
           .signInWithEmailAndPassword(email: uEmail, password: uPass);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
-        print('No user found for that email.');
+        Text('No user found for that email.');
       } else if (e.code == 'wrong-password') {
-        print('Wrong password provided for that user.');
+        Text('Wrong password provided for that user.');
       }
     }
     auth.authStateChanges().listen((User? user) {
