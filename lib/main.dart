@@ -5,13 +5,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 FirebaseAuth auth = FirebaseAuth.instance;
 
 class MyApp extends StatefulWidget {
-  MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   _MyAppState createState() => _MyAppState();
@@ -19,6 +19,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final Future<FirebaseApp> _fbApp = Firebase.initializeApp();
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
         title: 'Taskify',
@@ -29,10 +30,10 @@ class _MyAppState extends State<MyApp> {
           future: _fbApp,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              print('You have an error! ${snapshot.error.toString()}');
+              //print('You have an error! ${snapshot.error.toString()}');
               return const Text('Something went wrong!');
             } else if (snapshot.hasData) {
-              return Auth();
+              return const Auth();
             } else {
               return const Center(
                 child: CircularProgressIndicator(),
@@ -44,7 +45,7 @@ class _MyAppState extends State<MyApp> {
 }
 
 class CreateTask extends StatefulWidget {
-  CreateTask({Key? key}) : super(key: key);
+  const CreateTask({Key? key}) : super(key: key);
 
   @override
   _CreateTaskState createState() => _CreateTaskState();
@@ -123,14 +124,15 @@ class _CreateTaskState extends State<CreateTask> {
                           "Status": "active",
                         }).then((_) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Successfully Added')));
+                              const SnackBar(
+                                  content: Text('Successfully Added')));
                           dateController.clear();
                           taskController.clear();
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
-                                    MyHomePage(title: "Current Tasks")),
+                                    const MyHomePage(title: "Current Tasks")),
                           );
                         }).catchError((onError) {
                           ScaffoldMessenger.of(context)
@@ -164,7 +166,6 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   static final dbRef = FirebaseDatabase.instance.reference().child("tasks");
   static var lists = [];
-  //static var completedTasks = [];
   static User? usr = auth.currentUser;
   final taskController = TextEditingController();
 
@@ -172,7 +173,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await FirebaseAuth.instance.signOut();
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Auth()),
+      MaterialPageRoute(builder: (context) => const Auth()),
     );
   }
 
@@ -199,7 +200,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (values["User"] == usr!.email &&
           taskName == values["TaskName"] &&
           taskDate == values["DueDate"]) {
-        childrenPathValueMap["${key}/TaskName"] = newTaskName;
+        childrenPathValueMap["$key/TaskName"] = newTaskName;
       }
     });
     dbRef.update(childrenPathValueMap);
@@ -216,10 +217,59 @@ class _MyHomePageState extends State<MyHomePage> {
       if (values["User"] == usr!.email &&
           taskName == values["TaskName"] &&
           taskDate == values["DueDate"]) {
-        childrenPathValueMap["${key}/Status"] = "complete";
+        childrenPathValueMap["$key/Status"] = "complete";
       }
     });
     dbRef.update(childrenPathValueMap);
+  }
+
+  markActive(values, taskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["User"] == usr!.email &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
+        childrenPathValueMap["$key/Status"] = "active";
+      }
+    });
+    dbRef.update(childrenPathValueMap);
+  }
+
+  carphins() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        automaticallyImplyLeading: false,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const MyHomePage(title: "Taskify")));
+                  },
+                  child: const Text('View Active Tasks')),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => viewCompleted()));
+                  },
+                  child: const Text('View Completed Tasks')),
+              ElevatedButton(
+                  onPressed: appSignOut, child: const Text('Sign Out')),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   viewCompleted() {
@@ -254,10 +304,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                 return Card(
                                     child: InkWell(
                                   splashColor: Colors.blue.withAlpha(30),
-                                  onLongPress: markCompleted(
-                                      values,
-                                      lists[index]["TaskName"],
-                                      lists[index]["DueDate"]),
                                   onTap: () {
                                     Navigator.push(
                                       context,
@@ -267,6 +313,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                               lists[index]["TaskName"],
                                               lists[index]["DueDate"])),
                                     );
+                                  },
+                                  onDoubleTap: () {
+                                    markActive(values, lists[index]["TaskName"],
+                                        lists[index]["DueDate"]);
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                viewCompleted()));
                                   },
                                   child: Column(
                                     crossAxisAlignment:
@@ -291,6 +346,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                 const MyHomePage(title: "Taskify")));
                   },
                   child: const Text('View Active Tasks')),
+              ElevatedButton(
+                  onPressed: carphins, child: const Text('Carphins')),
               ElevatedButton(
                   onPressed: appSignOut, child: const Text('Sign Out')),
             ],
@@ -363,7 +420,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     }
                     return const CircularProgressIndicator();
                   }),
-              CreateTask(),
+              const CreateTask(),
               ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -399,18 +456,18 @@ class _AuthState extends State<Auth> {
           .createUserWithEmailAndPassword(email: uEmail, password: uPass);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
-        Text('The password provided is too weak.');
+        const Text('The password provided is too weak.');
       } else if (e.code == 'email-already-in-use') {
-        Text('The account already exists for that email.');
+        const Text('The account already exists for that email.');
       }
     } catch (e) {
-      print(e);
+      //print(e);
     }
     auth.authStateChanges().listen((User? user) {
       if (user == null) {
-        print('User is currently signed out!');
+        //print('User is currently signed out!');
       } else {
-        print('User is signed in!');
+        //print('User is signed in!');
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -427,16 +484,16 @@ class _AuthState extends State<Auth> {
           .signInWithEmailAndPassword(email: uEmail, password: uPass);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
-        Text('No user found for that email.');
+        const Text('No user found for that email.');
       } else if (e.code == 'wrong-password') {
-        Text('Wrong password provided for that user.');
+        const Text('Wrong password provided for that user.');
       }
     }
     auth.authStateChanges().listen((User? user) {
       if (user == null) {
-        print('User is currently signed out!');
+        //print('User is currently signed out!');
       } else {
-        print('User is signed in!');
+        //print('User is signed in!');
         Navigator.push(
           context,
           MaterialPageRoute(
