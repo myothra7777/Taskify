@@ -44,6 +44,79 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+class AddFriend extends StatefulWidget {
+  const AddFriend({Key? key}) : super(key: key);
+
+  @override
+  _AddFriendState createState() => _AddFriendState();
+}
+
+class _AddFriendState extends State<AddFriend> {
+  final _formKey = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final dbRef = FirebaseDatabase.instance.reference().child("friends");
+  User? usr = auth.currentUser;
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+            child: Column(children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: TextFormField(
+              controller: emailController,
+              decoration: InputDecoration(
+                labelText: "Enter User's Email",
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Enter Users Email';
+                }
+                return null;
+              },
+            ),
+          ),
+          Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        dbRef.push().set({
+                          "SourceUser": usr!.email,
+                          "DestinationUser": emailController.text,
+                        }).then((_) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Successfully Sent')));
+                          emailController.clear();
+                        }).catchError((onError) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(onError)));
+                        });
+                      }
+                    },
+                    child: const Text('Submit'),
+                  ),
+                ],
+              )),
+        ])));
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    emailController.dispose();
+  }
+}
+
 class CreateTask extends StatefulWidget {
   const CreateTask({Key? key}) : super(key: key);
 
@@ -164,16 +237,40 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  static final dbRef = FirebaseDatabase.instance.reference().child("tasks");
-  static var lists = [];
-  static User? usr = auth.currentUser;
+  final dbRef = FirebaseDatabase.instance.reference().child("tasks");
+  final friendRef = FirebaseDatabase.instance.reference().child("friends");
+  var lists = [];
+  var sentList = [];
+  var recvList = [];
+  User? usr = auth.currentUser;
   final taskController = TextEditingController();
+  final dateController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final groupRef = FirebaseDatabase.instance.reference().child("groupTasks");
 
   appSignOut() async {
     await FirebaseAuth.instance.signOut();
+    lists = [];
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const Auth()),
+    );
+  }
+
+  updateTask(values, taskName, newTaskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["User"] == usr!.email &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
+        childrenPathValueMap["$key/TaskName"] = newTaskName;
+      }
+    });
+    dbRef.update(childrenPathValueMap);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => const MyHomePage(title: 'Taskify')),
     );
   }
 
@@ -194,7 +291,24 @@ class _MyHomePageState extends State<MyHomePage> {
         ])));
   }
 
-  updateTask(values, taskName, newTaskName, taskDate) {
+  editCompleteTask(values, taskName, taskDate) {
+    return Scaffold(
+        body: Center(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+          TextField(
+            decoration: InputDecoration(hintText: taskName),
+            controller: taskController,
+          ),
+          ElevatedButton(
+              onPressed: () => updateCompleteTask(
+                  values, taskName, taskController.text, taskDate),
+              child: const Text('Submit')),
+        ])));
+  }
+
+  updateCompleteTask(values, taskName, newTaskName, taskDate) {
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
       if (values["User"] == usr!.email &&
@@ -206,8 +320,7 @@ class _MyHomePageState extends State<MyHomePage> {
     dbRef.update(childrenPathValueMap);
     Navigator.push(
       context,
-      MaterialPageRoute(
-          builder: (context) => const MyHomePage(title: 'Taskify')),
+      MaterialPageRoute(builder: (context) => viewCompleted()),
     );
   }
 
@@ -235,10 +348,102 @@ class _MyHomePageState extends State<MyHomePage> {
     dbRef.update(childrenPathValueMap);
   }
 
-  carphins() {
+  editGTask(values, taskName, taskDate) {
+    return Scaffold(
+        body: Center(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+          TextField(
+            decoration: InputDecoration(hintText: taskName),
+            controller: taskController,
+          ),
+          ElevatedButton(
+              onPressed: () =>
+                  updateGTask(values, taskName, taskController.text, taskDate),
+              child: const Text('Submit')),
+        ])));
+  }
+
+  updateGTask(values, taskName, newTaskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["Assigned By"] == usr!.email &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
+        childrenPathValueMap["$key/TaskName"] = newTaskName;
+      }
+    });
+    groupRef.update(childrenPathValueMap);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => viewActiveGTask()),
+    );
+  }
+
+  editCompleteGTask(values, taskName, taskDate) {
+    return Scaffold(
+        body: Center(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+          TextField(
+            decoration: InputDecoration(hintText: taskName),
+            controller: taskController,
+          ),
+          ElevatedButton(
+              onPressed: () => updateCompleteGTask(
+                  values, taskName, taskController.text, taskDate),
+              child: const Text('Submit')),
+        ])));
+  }
+
+  updateCompleteGTask(values, taskName, newTaskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["Assigned By"] == usr!.email &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
+        childrenPathValueMap["${key}/TaskName"] = newTaskName;
+      }
+    });
+    groupRef.update(childrenPathValueMap);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => viewCompleteGTask()),
+    );
+  }
+
+  markGActive(values, taskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["Assigned To"] == usr!.email ||
+          values["Assigned By"] == usr!.email &&
+              taskName == values["TaskName"] &&
+              taskDate == values["DueDate"]) {
+        childrenPathValueMap["$key/Status"] = "active";
+      }
+    });
+    groupRef.update(childrenPathValueMap);
+  }
+
+  markGCompleted(values, taskName, taskDate) {
+    Map<String, dynamic> childrenPathValueMap = {};
+    values.forEach((key, values) {
+      if (values["Assigned To"] == usr!.email ||
+          values["Assigned By"] == usr!.email &&
+              taskName == values["TaskName"] &&
+              taskDate == values["DueDate"]) {
+        childrenPathValueMap["$key/Status"] = "complete";
+      }
+    });
+    groupRef.update(childrenPathValueMap);
+  }
+
+  viewCompleteGTask() {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("Completed Group Tasks"),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -246,6 +451,74 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
+              FutureBuilder(
+                  future: groupRef.orderByChild("DueDate").startAt("0").once(),
+                  builder: (context, AsyncSnapshot<DataSnapshot> snapshot) {
+                    if (snapshot.hasData) {
+                      lists.clear();
+                      Map<dynamic, dynamic> values = snapshot.data!.value;
+                      values.forEach((key, values) {
+                        if (values["Assigned To"] == usr!.email ||
+                            values["Assigned By"] == usr!.email &&
+                                values["Status"] == "complete") {
+                          lists.add(values);
+                        }
+                      });
+                      return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: lists.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return Card(
+                                child: InkWell(
+                              splashColor: Colors.blue.withAlpha(30),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => editCompleteGTask(
+                                            values,
+                                            lists[index]["TaskName"],
+                                            lists[index]["DueDate"],
+                                          )),
+                                );
+                              },
+                              onDoubleTap: () {
+                                markGActive(values, lists[index]["TaskName"],
+                                    lists[index]["DueDate"]);
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => viewCompleteGTask(),
+                                    ));
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(lists[index]["TaskName"]),
+                                  Text("Due Date: " + lists[index]["DueDate"]),
+                                  Text("Assigned By: " +
+                                      lists[index]["Assigned By"]),
+                                ],
+                              ),
+                            ));
+                          });
+                    }
+                    return const CircularProgressIndicator();
+                  }),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => viewActiveGTask()));
+                  },
+                  child: const Text('View Active Group Tasks')),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => friendsList()));
+                  },
+                  child: const Text('Friends List')),
               ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -254,15 +527,305 @@ class _MyHomePageState extends State<MyHomePage> {
                             builder: (context) =>
                                 const MyHomePage(title: "Taskify")));
                   },
-                  child: const Text('View Active Tasks')),
+                  child: const Text('Home')),
+              ElevatedButton(
+                  onPressed: appSignOut, child: const Text('Sign Out')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  viewActiveGTask() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Current Group Tasks"),
+        automaticallyImplyLeading: false,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              FutureBuilder(
+                  future: groupRef.orderByChild("DueDate").startAt("0").once(),
+                  builder: (context, AsyncSnapshot<DataSnapshot> snapshot) {
+                    if (snapshot.hasData) {
+                      lists.clear();
+                      Map<dynamic, dynamic> values = snapshot.data!.value;
+                      values.forEach((key, values) {
+                        if (values["Assigned To"] == usr!.email ||
+                            values["Assigned By"] == usr!.email &&
+                                values["Status"] == "active") {
+                          lists.add(values);
+                        }
+                      });
+                      return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: lists.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return Card(
+                                child: InkWell(
+                              splashColor: Colors.blue.withAlpha(30),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => editGTask(
+                                            values,
+                                            lists[index]["TaskName"],
+                                            lists[index]["DueDate"],
+                                          )),
+                                );
+                              },
+                              onDoubleTap: () {
+                                markGCompleted(values, lists[index]["TaskName"],
+                                    lists[index]["DueDate"]);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => viewActiveGTask()),
+                                );
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(lists[index]["TaskName"]),
+                                  Text("Due Date: " + lists[index]["DueDate"]),
+                                  Text("Assigned By: " +
+                                      lists[index]["Assigned By"]),
+                                ],
+                              ),
+                            ));
+                          });
+                    }
+                    return const CircularProgressIndicator();
+                  }),
               ElevatedButton(
                   onPressed: () {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => viewCompleted()));
+                            builder: (context) => viewCompleteGTask()));
                   },
-                  child: const Text('View Completed Tasks')),
+                  child: const Text('View Completed Group Tasks')),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => friendsList()));
+                  },
+                  child: const Text('Friends List')),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const MyHomePage(title: "Taskify")));
+                  },
+                  child: const Text('Home')),
+              ElevatedButton(
+                  onPressed: appSignOut, child: const Text('Sign Out')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  createGTask(String assignedTo) {
+    return Scaffold(
+        body: Center(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+          Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                  child: Column(children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: TextFormField(
+                    controller: taskController,
+                    decoration: InputDecoration(
+                      labelText: "Enter Task",
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return 'Enter Task';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: TextFormField(
+                    keyboardType: TextInputType.datetime,
+                    controller: dateController,
+                    onTap: () async {
+                      var date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime(2100));
+                      dateController.text = date.toString().substring(0, 10);
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Enter Due Date",
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return 'Enter Due Date';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: <Widget>[
+                        ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              groupRef.push().set({
+                                "Assigned By": usr!.email,
+                                "Assigned To": assignedTo,
+                                "TaskName": taskController.text,
+                                "DueDate": dateController.text,
+                                "Status": "active",
+                              }).then((_) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Successfully Added')));
+                                dateController.clear();
+                                taskController.clear();
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => friendsList()));
+                              }).catchError((onError) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(onError)));
+                              });
+                            }
+                          },
+                          child: const Text('Submit'),
+                        ),
+                      ],
+                    )),
+              ])))
+        ])));
+  }
+
+  friendsList() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Friends List"),
+        automaticallyImplyLeading: false,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text("Friend List"),
+              Text("(Tap A Friend's Name To Assign A Task)"),
+              FutureBuilder(
+                  future: friendRef
+                      .orderByChild("DestinationUser")
+                      .startAt("0")
+                      .once(),
+                  builder: (context, AsyncSnapshot<DataSnapshot> snapshot) {
+                    if (snapshot.hasData) {
+                      lists.clear();
+                      recvList.clear();
+                      sentList.clear();
+                      Map<dynamic, dynamic> values = snapshot.data!.value;
+                      values.forEach((key, values) {
+                        if (values["DestinationUser"] == usr!.email &&
+                            values["SourceUser"] != usr!.email) {
+                          recvList.add(values["SourceUser"]);
+                        }
+                      });
+                      values.forEach((key, values) {
+                        if (values["DestinationUser"] != usr!.email &&
+                            values["SourceUser"] == usr!.email) {
+                          sentList.add(values["DestinationUser"]);
+                        }
+                      });
+                      recvList.forEach((element) {
+                        if (sentList.contains(element)) {
+                          lists.add(element);
+                        }
+                      });
+                      return Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: lists.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return Card(
+                                    child: InkWell(
+                                  splashColor: Colors.blue.withAlpha(30),
+                                  onTap: () {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                createGTask(lists[index])));
+                                  },
+                                  onDoubleTap: () {
+                                    markActive(values, lists[index]["TaskName"],
+                                        lists[index]["DueDate"]);
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                viewCompleted()));
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(""),
+                                      Text(lists[index]),
+                                      Text(""),
+                                    ],
+                                  ),
+                                ));
+                              }));
+                    }
+                    return const CircularProgressIndicator();
+                  }),
+              Text("Send Friend Request"),
+              AddFriend(),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => viewActiveGTask()));
+                  },
+                  child: const Text('View Current Group Tasks')),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const MyHomePage(title: "Taskify")));
+                  },
+                  child: const Text('Home')),
               ElevatedButton(
                   onPressed: appSignOut, child: const Text('Sign Out')),
             ],
@@ -308,10 +871,11 @@ class _MyHomePageState extends State<MyHomePage> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                          builder: (context) => editTask(
-                                              values,
-                                              lists[index]["TaskName"],
-                                              lists[index]["DueDate"])),
+                                          builder: (context) =>
+                                              editCompleteTask(
+                                                  values,
+                                                  lists[index]["TaskName"],
+                                                  lists[index]["DueDate"])),
                                     );
                                   },
                                   onDoubleTap: () {
@@ -347,7 +911,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                   child: const Text('View Active Tasks')),
               ElevatedButton(
-                  onPressed: carphins, child: const Text('Carphins')),
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => friendsList()));
+                  },
+                  child: const Text('Friends List')),
               ElevatedButton(
                   onPressed: appSignOut, child: const Text('Sign Out')),
             ],
@@ -430,12 +998,25 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                   child: const Text('View Completed Tasks')),
               ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => friendsList()));
+                  },
+                  child: const Text('Friends List')),
+              ElevatedButton(
                   onPressed: appSignOut, child: const Text('Sign Out')),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    dateController.dispose();
+    taskController.dispose();
   }
 }
 
@@ -449,6 +1030,7 @@ class Auth extends StatefulWidget {
 class _AuthState extends State<Auth> {
   final myController = TextEditingController();
   final myController2 = TextEditingController();
+
   appRegister(String uEmail, String uPass) async {
     try {
       // ignore: unused_local_variable
