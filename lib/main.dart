@@ -22,7 +22,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Taskify',
+        title: 'Taskify (Active Tasks / Create A Task)',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
@@ -30,7 +30,6 @@ class _MyAppState extends State<MyApp> {
           future: _fbApp,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              //print('You have an error! ${snapshot.error.toString()}');
               return const Text('Something went wrong!');
             } else if (snapshot.hasData) {
               return const Auth();
@@ -128,96 +127,127 @@ class _CreateTaskState extends State<CreateTask> {
   final _formKey = GlobalKey<FormState>();
   final taskController = TextEditingController();
   final dateController = TextEditingController();
+  final timeController = TextEditingController();
   final dbRef = FirebaseDatabase.instance.reference().child("tasks");
   User? usr = auth.currentUser;
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-            child: Column(children: <Widget>[
-          Padding(
+    return Container(
+        child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: TextFormField(
-              controller: taskController,
-              decoration: InputDecoration(
-                labelText: "Enter Task",
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-              ),
-              validator: (value) {
-                if (value!.isEmpty) {
-                  return 'Enter Task';
-                }
-                return null;
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: TextFormField(
-              keyboardType: TextInputType.datetime,
-              controller: dateController,
-              onTap: () async {
-                var date = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime(2100));
-                dateController.text = date.toString().substring(0, 10);
-              },
-              decoration: InputDecoration(
-                labelText: "Enter Due Date",
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-              ),
-              validator: (value) {
-                if (value!.isEmpty) {
-                  return 'Enter Due Date';
-                }
-                return null;
-              },
-            ),
-          ),
-          Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[
-                  ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        dbRef.push().set({
-                          "User": usr!.email,
-                          "TaskName": taskController.text,
-                          "DueDate": dateController.text,
-                          "Status": "active",
-                        }).then((_) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Successfully Added')));
-                          dateController.clear();
-                          taskController.clear();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    const MyHomePage(title: "Current Tasks")),
-                          );
-                        }).catchError((onError) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(content: Text(onError)));
-                        });
-                      }
-                    },
-                    child: const Text('Submit'),
+            child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                    child: Column(children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: TextFormField(
+                      controller: taskController,
+                      decoration: InputDecoration(
+                        labelText: "Enter Task",
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Enter Task';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
-                ],
-              )),
-        ])));
+                  Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: TextFormField(
+                      keyboardType: TextInputType.datetime,
+                      controller: dateController,
+                      onTap: () async {
+                        var date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime(2100));
+                        dateController.text = date.toString().substring(0, 10);
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Enter Due Date",
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Enter Due Date';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: TextFormField(
+                      keyboardType: TextInputType.datetime,
+                      controller: timeController,
+                      onTap: () async {
+                        var date = await showTimePicker(
+                            context: context, initialTime: TimeOfDay.now());
+                        timeController.text = "${date!.hour}:${date.minute}";
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Enter Due Time",
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Enter Due Time';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: <Widget>[
+                          ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                dbRef.push().set({
+                                  "User": usr!.email,
+                                  "TaskName": taskController.text,
+                                  "DueDate": dateController.text,
+                                  "DueTime": timeController.text,
+                                  "Status": "active",
+                                }).then((_) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Successfully Added')));
+                                  dateController.clear();
+                                  taskController.clear();
+                                  timeController.clear();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => const MyHomePage(
+                                            title:
+                                                "Taskify (Active Tasks / Create A Task")),
+                                  );
+                                }).catchError((onError) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(onError)));
+                                });
+                              }
+                            },
+                            child: const Text('Submit'),
+                          ),
+                        ],
+                      )),
+                ])))));
   }
 
   @override
@@ -225,6 +255,7 @@ class _CreateTaskState extends State<CreateTask> {
     super.dispose();
     dateController.dispose();
     taskController.dispose();
+    timeController.dispose();
   }
 }
 
@@ -245,6 +276,7 @@ class _MyHomePageState extends State<MyHomePage> {
   User? usr = auth.currentUser;
   final taskController = TextEditingController();
   final dateController = TextEditingController();
+  final timeController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final groupRef = FirebaseDatabase.instance.reference().child("groupTasks");
 
@@ -257,64 +289,235 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  updateTask(values, taskName, newTaskName, taskDate) {
+  updateTask(
+      values, taskName, newTaskName, newTaskDate, newTaskTime, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
       if (values["User"] == usr!.email &&
           taskName == values["TaskName"] &&
           taskDate == values["DueDate"]) {
         childrenPathValueMap["$key/TaskName"] = newTaskName;
+        childrenPathValueMap["$key/DueDate"] = newTaskDate;
+        childrenPathValueMap["$key/DueTime"] = newTaskTime;
       }
     });
     dbRef.update(childrenPathValueMap);
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => const MyHomePage(title: 'Taskify')),
+          builder: (context) => const MyHomePage(
+              title: 'Taskify (Active Tasks / Create A Task)')),
     );
   }
 
   editTask(values, taskName, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
+    taskController.text = taskName;
+    dateController.text = taskDate;
     return Scaffold(
+        appBar: AppBar(
+          title: Text("Taskify (Edit Task)"),
+          automaticallyImplyLeading: false,
+        ),
         body: Center(
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-          TextField(
-            decoration: InputDecoration(hintText: taskName),
-            controller: taskController,
-          ),
-          ElevatedButton(
-              onPressed: () =>
-                  updateTask(values, taskName, taskController.text, taskDate),
-              child: const Text('Submit')),
-        ])));
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  controller: taskController,
+                  decoration: InputDecoration(
+                    labelText: "Enter Task",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Task';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: dateController,
+                  onTap: () async {
+                    var date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(2100));
+                    dateController.text = date.toString().substring(0, 10);
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Date",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Date';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: timeController,
+                  onTap: () async {
+                    var date = await showTimePicker(
+                        context: context, initialTime: TimeOfDay.now());
+                    timeController.text = "${date!.hour}:${date.minute}";
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Time",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Time';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              ElevatedButton(
+                  onPressed: () => updateTask(
+                      values,
+                      taskName,
+                      taskController.text,
+                      dateController.text,
+                      timeController.text,
+                      taskDate),
+                  child: const Text('Submit')),
+            ])));
   }
 
   editCompleteTask(values, taskName, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
+    taskController.text = taskName;
+    dateController.text = taskDate;
     return Scaffold(
+        appBar: AppBar(
+          title: Text("Taskify (Edit Task)"),
+          automaticallyImplyLeading: false,
+        ),
         body: Center(
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-          TextField(
-            decoration: InputDecoration(hintText: taskName),
-            controller: taskController,
-          ),
-          ElevatedButton(
-              onPressed: () => updateCompleteTask(
-                  values, taskName, taskController.text, taskDate),
-              child: const Text('Submit')),
-        ])));
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  controller: taskController,
+                  decoration: InputDecoration(
+                    labelText: "Enter Task",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Task';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: dateController,
+                  onTap: () async {
+                    var date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(2100));
+                    dateController.text = date.toString().substring(0, 10);
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Date",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Date';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: timeController,
+                  onTap: () async {
+                    var date = await showTimePicker(
+                        context: context, initialTime: TimeOfDay.now());
+                    timeController.text = "${date!.hour}:${date.minute}";
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Time",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Time';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              ElevatedButton(
+                  onPressed: () => updateCompleteTask(
+                      values,
+                      taskName,
+                      taskController.text,
+                      dateController.text,
+                      timeController.text,
+                      taskDate),
+                  child: const Text('Submit')),
+            ])));
   }
 
-  updateCompleteTask(values, taskName, newTaskName, taskDate) {
+  updateCompleteTask(
+      values, taskName, newTaskName, newTaskDate, newTaskTime, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
       if (values["User"] == usr!.email &&
           taskName == values["TaskName"] &&
           taskDate == values["DueDate"]) {
         childrenPathValueMap["$key/TaskName"] = newTaskName;
+        childrenPathValueMap["$key/DueDate"] = newTaskDate;
+        childrenPathValueMap["$key/DueTime"] = newTaskTime;
       }
     });
     dbRef.update(childrenPathValueMap);
@@ -349,29 +552,114 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   editGTask(values, taskName, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
+    taskController.text = taskName;
+    dateController.text = taskDate;
     return Scaffold(
+        appBar: AppBar(
+          title: Text("Edit Group Task"),
+          automaticallyImplyLeading: false,
+        ),
         body: Center(
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-          TextField(
-            decoration: InputDecoration(hintText: taskName),
-            controller: taskController,
-          ),
-          ElevatedButton(
-              onPressed: () =>
-                  updateGTask(values, taskName, taskController.text, taskDate),
-              child: const Text('Submit')),
-        ])));
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  controller: taskController,
+                  decoration: InputDecoration(
+                    labelText: "Enter Task",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Task';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: dateController,
+                  onTap: () async {
+                    var date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(2100));
+                    dateController.text = date.toString().substring(0, 10);
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Date",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Date';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: timeController,
+                  onTap: () async {
+                    var date = await showTimePicker(
+                        context: context, initialTime: TimeOfDay.now());
+                    timeController.text = "${date!.hour}:${date.minute}";
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Time",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Time';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              ElevatedButton(
+                  onPressed: () => updateGTask(
+                      values,
+                      taskName,
+                      taskController.text,
+                      dateController.text,
+                      timeController.text,
+                      taskDate),
+                  child: const Text('Submit')),
+            ])));
   }
 
-  updateGTask(values, taskName, newTaskName, taskDate) {
+  updateGTask(
+      values, taskName, newTaskName, newTaskDate, newTaskTime, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
       if (values["Assigned By"] == usr!.email &&
           taskName == values["TaskName"] &&
           taskDate == values["DueDate"]) {
         childrenPathValueMap["$key/TaskName"] = newTaskName;
+        childrenPathValueMap["$key/DueDate"] = newTaskDate;
+        childrenPathValueMap["$key/DueTime"] = newTaskTime;
       }
     });
     groupRef.update(childrenPathValueMap);
@@ -382,29 +670,111 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   editCompleteGTask(values, taskName, taskDate) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
+    taskController.text = taskName;
+    dateController.text = taskDate;
     return Scaffold(
+        appBar: AppBar(
+          title: Text("Edit Group Task"),
+          automaticallyImplyLeading: false,
+        ),
         body: Center(
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-          TextField(
-            decoration: InputDecoration(hintText: taskName),
-            controller: taskController,
-          ),
-          ElevatedButton(
-              onPressed: () => updateCompleteGTask(
-                  values, taskName, taskController.text, taskDate),
-              child: const Text('Submit')),
-        ])));
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  controller: taskController,
+                  decoration: InputDecoration(
+                    labelText: "Enter Task",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Task';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: dateController,
+                  onTap: () async {
+                    var date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(2100));
+                    dateController.text = date.toString().substring(0, 10);
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Date",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Date';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: TextFormField(
+                  keyboardType: TextInputType.datetime,
+                  controller: timeController,
+                  onTap: () async {
+                    var date = await showTimePicker(
+                        context: context, initialTime: TimeOfDay.now());
+                    timeController.text = "${date!.hour}:${date.minute}";
+                  },
+                  decoration: InputDecoration(
+                    labelText: "Enter Due Time",
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return 'Enter Due Time';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              ElevatedButton(
+                  onPressed: () => updateCompleteGTask(
+                      values,
+                      taskName,
+                      taskController.text,
+                      dateController.text,
+                      timeController.text,
+                      taskDate),
+                  child: const Text('Submit')),
+            ])));
   }
 
-  updateCompleteGTask(values, taskName, newTaskName, taskDate) {
+  updateCompleteGTask(
+      values, taskName, newTaskName, newTaskDate, newTaskTime, taskDate) {
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
       if (values["Assigned By"] == usr!.email &&
           taskName == values["TaskName"] &&
           taskDate == values["DueDate"]) {
         childrenPathValueMap["${key}/TaskName"] = newTaskName;
+        childrenPathValueMap["$key/DueDate"] = newTaskDate;
+        childrenPathValueMap["$key/DueTime"] = newTaskTime;
       }
     });
     groupRef.update(childrenPathValueMap);
@@ -417,10 +787,10 @@ class _MyHomePageState extends State<MyHomePage> {
   markGActive(values, taskName, taskDate) {
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
-      if (values["Assigned To"] == usr!.email ||
-          values["Assigned By"] == usr!.email &&
-              taskName == values["TaskName"] &&
-              taskDate == values["DueDate"]) {
+      if ((values["Assigned To"] == usr!.email ||
+              values["Assigned By"] == usr!.email) &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
         childrenPathValueMap["$key/Status"] = "active";
       }
     });
@@ -430,10 +800,10 @@ class _MyHomePageState extends State<MyHomePage> {
   markGCompleted(values, taskName, taskDate) {
     Map<String, dynamic> childrenPathValueMap = {};
     values.forEach((key, values) {
-      if (values["Assigned To"] == usr!.email ||
-          values["Assigned By"] == usr!.email &&
-              taskName == values["TaskName"] &&
-              taskDate == values["DueDate"]) {
+      if ((values["Assigned To"] == usr!.email ||
+              values["Assigned By"] == usr!.email) &&
+          taskName == values["TaskName"] &&
+          taskDate == values["DueDate"]) {
         childrenPathValueMap["$key/Status"] = "complete";
       }
     });
@@ -443,7 +813,7 @@ class _MyHomePageState extends State<MyHomePage> {
   viewCompleteGTask() {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Completed Group Tasks"),
+        title: Text("Taskify (Completed Group Tasks)"),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -458,50 +828,62 @@ class _MyHomePageState extends State<MyHomePage> {
                       lists.clear();
                       Map<dynamic, dynamic> values = snapshot.data!.value;
                       values.forEach((key, values) {
-                        if (values["Assigned To"] == usr!.email ||
-                            values["Assigned By"] == usr!.email &&
-                                values["Status"] == "complete") {
+                        if ((values["Assigned To"] == usr!.email ||
+                                values["Assigned By"] == usr!.email) &&
+                            (values["Status"] == "complete")) {
                           lists.add(values);
                         }
                       });
-                      return ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: lists.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            return Card(
-                                child: InkWell(
-                              splashColor: Colors.blue.withAlpha(30),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => editCompleteGTask(
-                                            values,
-                                            lists[index]["TaskName"],
-                                            lists[index]["DueDate"],
-                                          )),
-                                );
-                              },
-                              onDoubleTap: () {
-                                markGActive(values, lists[index]["TaskName"],
-                                    lists[index]["DueDate"]);
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => viewCompleteGTask(),
-                                    ));
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(lists[index]["TaskName"]),
-                                  Text("Due Date: " + lists[index]["DueDate"]),
-                                  Text("Assigned By: " +
-                                      lists[index]["Assigned By"]),
-                                ],
-                              ),
-                            ));
-                          });
+                      return Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: lists.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return Card(
+                                    child: InkWell(
+                                  splashColor: Colors.blue.withAlpha(30),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              editCompleteGTask(
+                                                values,
+                                                lists[index]["TaskName"],
+                                                lists[index]["DueDate"],
+                                              )),
+                                    );
+                                  },
+                                  onDoubleTap: () {
+                                    markGActive(
+                                        values,
+                                        lists[index]["TaskName"],
+                                        lists[index]["DueDate"]);
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              viewCompleteGTask(),
+                                        ));
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(lists[index]["TaskName"]),
+                                      Text("Due: " +
+                                          lists[index]["DueDate"] +
+                                          " at " +
+                                          lists[index]["DueTime"]),
+                                      Text("Assigned By: " +
+                                          lists[index]["Assigned By"]),
+                                      Text("Assigned To: " +
+                                          lists[index]["Assigned To"]),
+                                    ],
+                                  ),
+                                ));
+                              }));
                     }
                     return const CircularProgressIndicator();
                   }),
@@ -524,12 +906,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) =>
-                                const MyHomePage(title: "Taskify")));
+                            builder: (context) => const MyHomePage(
+                                title:
+                                    "Taskify (Active Tasks / Create A Task)")));
                   },
                   child: const Text('Home')),
-              ElevatedButton(
-                  onPressed: appSignOut, child: const Text('Sign Out')),
             ],
           ),
         ),
@@ -540,7 +921,7 @@ class _MyHomePageState extends State<MyHomePage> {
   viewActiveGTask() {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Current Group Tasks"),
+        title: Text("Taskify (Active Group Tasks)"),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -555,50 +936,61 @@ class _MyHomePageState extends State<MyHomePage> {
                       lists.clear();
                       Map<dynamic, dynamic> values = snapshot.data!.value;
                       values.forEach((key, values) {
-                        if (values["Assigned To"] == usr!.email ||
-                            values["Assigned By"] == usr!.email &&
-                                values["Status"] == "active") {
+                        if ((values["Assigned To"] == usr!.email ||
+                                values["Assigned By"] == usr!.email) &&
+                            (values["Status"] == "active")) {
                           lists.add(values);
                         }
                       });
-                      return ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: lists.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            return Card(
-                                child: InkWell(
-                              splashColor: Colors.blue.withAlpha(30),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => editGTask(
-                                            values,
-                                            lists[index]["TaskName"],
-                                            lists[index]["DueDate"],
-                                          )),
-                                );
-                              },
-                              onDoubleTap: () {
-                                markGCompleted(values, lists[index]["TaskName"],
-                                    lists[index]["DueDate"]);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => viewActiveGTask()),
-                                );
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(lists[index]["TaskName"]),
-                                  Text("Due Date: " + lists[index]["DueDate"]),
-                                  Text("Assigned By: " +
-                                      lists[index]["Assigned By"]),
-                                ],
-                              ),
-                            ));
-                          });
+                      return Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: lists.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return Card(
+                                    child: InkWell(
+                                  splashColor: Colors.blue.withAlpha(30),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => editGTask(
+                                                values,
+                                                lists[index]["TaskName"],
+                                                lists[index]["DueDate"],
+                                              )),
+                                    );
+                                  },
+                                  onDoubleTap: () {
+                                    markGCompleted(
+                                        values,
+                                        lists[index]["TaskName"],
+                                        lists[index]["DueDate"]);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              viewActiveGTask()),
+                                    );
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(lists[index]["TaskName"]),
+                                      Text("Due: " +
+                                          lists[index]["DueDate"] +
+                                          " at " +
+                                          lists[index]["DueTime"]),
+                                      Text("Assigned By: " +
+                                          lists[index]["Assigned By"]),
+                                      Text("Assigned To: " +
+                                          lists[index]["Assigned To"]),
+                                    ],
+                                  ),
+                                ));
+                              }));
                     }
                     return const CircularProgressIndicator();
                   }),
@@ -621,12 +1013,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) =>
-                                const MyHomePage(title: "Taskify")));
+                            builder: (context) => const MyHomePage(
+                                title:
+                                    "Taskify (Active Tasks / Create A Task)")));
                   },
                   child: const Text('Home')),
-              ElevatedButton(
-                  onPressed: appSignOut, child: const Text('Sign Out')),
             ],
           ),
         ),
@@ -635,102 +1026,138 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   createGTask(String assignedTo) {
+    dateController.clear();
+    taskController.clear();
+    timeController.clear();
     return Scaffold(
+        appBar: AppBar(
+          title: Text("Taskify (Assign Group Task)"),
+          automaticallyImplyLeading: false,
+        ),
         body: Center(
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-          Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                  child: Column(children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: TextFormField(
-                    controller: taskController,
-                    decoration: InputDecoration(
-                      labelText: "Enter Task",
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Enter Task';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: TextFormField(
-                    keyboardType: TextInputType.datetime,
-                    controller: dateController,
-                    onTap: () async {
-                      var date = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime(2100));
-                      dateController.text = date.toString().substring(0, 10);
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Enter Due Date",
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Enter Due Date';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: <Widget>[
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              groupRef.push().set({
-                                "Assigned By": usr!.email,
-                                "Assigned To": assignedTo,
-                                "TaskName": taskController.text,
-                                "DueDate": dateController.text,
-                                "Status": "active",
-                              }).then((_) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('Successfully Added')));
-                                dateController.clear();
-                                taskController.clear();
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => friendsList()));
-                              }).catchError((onError) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(onError)));
-                              });
-                            }
-                          },
-                          child: const Text('Submit'),
+              Form(
+                  key: _formKey,
+                  child: SingleChildScrollView(
+                      child: Column(children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: TextFormField(
+                        controller: taskController,
+                        decoration: InputDecoration(
+                          labelText: "Enter Task",
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
                         ),
-                      ],
-                    )),
-              ])))
-        ])));
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Enter Task';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: TextFormField(
+                        keyboardType: TextInputType.datetime,
+                        controller: dateController,
+                        onTap: () async {
+                          var date = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(1900),
+                              lastDate: DateTime(2100));
+                          dateController.text =
+                              date.toString().substring(0, 10);
+                        },
+                        decoration: InputDecoration(
+                          labelText: "Enter Due Date",
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Enter Due Date';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: TextFormField(
+                        keyboardType: TextInputType.datetime,
+                        controller: timeController,
+                        onTap: () async {
+                          var date = await showTimePicker(
+                              context: context, initialTime: TimeOfDay.now());
+                          timeController.text = "${date!.hour}:${date.minute}";
+                        },
+                        decoration: InputDecoration(
+                          labelText: "Enter Due Time",
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Enter Due Time';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                        padding: const EdgeInsets.all(5.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: <Widget>[
+                            ElevatedButton(
+                              onPressed: () {
+                                if (_formKey.currentState!.validate()) {
+                                  groupRef.push().set({
+                                    "Assigned By": usr!.email,
+                                    "Assigned To": assignedTo,
+                                    "TaskName": taskController.text,
+                                    "DueDate": dateController.text,
+                                    "DueTime": timeController.text,
+                                    "Status": "active",
+                                  }).then((_) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content:
+                                                Text('Successfully Added')));
+                                    dateController.clear();
+                                    taskController.clear();
+                                    timeController.clear();
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                friendsList()));
+                                  }).catchError((onError) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(onError)));
+                                  });
+                                }
+                              },
+                              child: const Text('Submit'),
+                            ),
+                          ],
+                        )),
+                  ])))
+            ])));
   }
 
   friendsList() {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Friends List"),
+        title: Text("Taskify (Friends List / Assign Task)"),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -784,15 +1211,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                             builder: (context) =>
                                                 createGTask(lists[index])));
                                   },
-                                  onDoubleTap: () {
-                                    markActive(values, lists[index]["TaskName"],
-                                        lists[index]["DueDate"]);
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                                viewCompleted()));
-                                  },
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -816,18 +1234,25 @@ class _MyHomePageState extends State<MyHomePage> {
                         MaterialPageRoute(
                             builder: (context) => viewActiveGTask()));
                   },
-                  child: const Text('View Current Group Tasks')),
+                  child: const Text('View Active Group Tasks')),
               ElevatedButton(
                   onPressed: () {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) =>
-                                const MyHomePage(title: "Taskify")));
+                            builder: (context) => viewCompleteGTask()));
+                  },
+                  child: const Text('View Completed Group Tasks')),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const MyHomePage(
+                                title:
+                                    "Taskify (Active Tasks / Create A Task)")));
                   },
                   child: const Text('Home')),
-              ElevatedButton(
-                  onPressed: appSignOut, child: const Text('Sign Out')),
             ],
           ),
         ),
@@ -838,7 +1263,7 @@ class _MyHomePageState extends State<MyHomePage> {
   viewCompleted() {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("Taskify (Completed Tasks)"),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -892,8 +1317,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                         CrossAxisAlignment.start,
                                     children: <Widget>[
                                       Text(lists[index]["TaskName"]),
-                                      Text("Due Date: " +
-                                          lists[index]["DueDate"]),
+                                      Text("Due: " +
+                                          lists[index]["DueDate"] +
+                                          " at " +
+                                          lists[index]["DueTime"]),
                                     ],
                                   ),
                                 ));
@@ -906,18 +1333,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) =>
-                                const MyHomePage(title: "Taskify")));
+                            builder: (context) => const MyHomePage(
+                                title:
+                                    "Taskify (Active Tasks / Create A Task)")));
                   },
                   child: const Text('View Active Tasks')),
-              ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => friendsList()));
-                  },
-                  child: const Text('Friends List')),
-              ElevatedButton(
-                  onPressed: appSignOut, child: const Text('Sign Out')),
             ],
           ),
         ),
@@ -929,7 +1349,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("Taskify (Active Tasks / Create A Task)"),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -949,42 +1369,51 @@ class _MyHomePageState extends State<MyHomePage> {
                           lists.add(values);
                         }
                       });
-                      return ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: lists.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            return Card(
-                                child: InkWell(
-                              splashColor: Colors.blue.withAlpha(30),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => editTask(
-                                          values,
-                                          lists[index]["TaskName"],
-                                          lists[index]["DueDate"])),
-                                );
-                              },
-                              onDoubleTap: () {
-                                markCompleted(values, lists[index]["TaskName"],
-                                    lists[index]["DueDate"]);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          const MyHomePage(title: 'Taskify')),
-                                );
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(lists[index]["TaskName"]),
-                                  Text("Due Date: " + lists[index]["DueDate"]),
-                                ],
-                              ),
-                            ));
-                          });
+                      return Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: lists.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return Card(
+                                    child: InkWell(
+                                  splashColor: Colors.blue.withAlpha(30),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => editTask(
+                                              values,
+                                              lists[index]["TaskName"],
+                                              lists[index]["DueDate"])),
+                                    );
+                                  },
+                                  onDoubleTap: () {
+                                    markCompleted(
+                                        values,
+                                        lists[index]["TaskName"],
+                                        lists[index]["DueDate"]);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => const MyHomePage(
+                                              title:
+                                                  'Taskify (Active Tasks / Create A Task)')),
+                                    );
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(lists[index]["TaskName"]),
+                                      Text("Due: " +
+                                          lists[index]["DueDate"] +
+                                          " at " +
+                                          lists[index]["DueTime"]),
+                                    ],
+                                  ),
+                                ));
+                              }));
                     }
                     return const CircularProgressIndicator();
                   }),
@@ -1017,6 +1446,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
     dateController.dispose();
     taskController.dispose();
+    timeController.dispose();
   }
 }
 
@@ -1042,18 +1472,15 @@ class _AuthState extends State<Auth> {
       } else if (e.code == 'email-already-in-use') {
         const Text('The account already exists for that email.');
       }
-    } catch (e) {
-      //print(e);
-    }
+    } catch (e) {}
     auth.authStateChanges().listen((User? user) {
       if (user == null) {
-        //print('User is currently signed out!');
       } else {
-        //print('User is signed in!');
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => const MyHomePage(title: 'Taskify')),
+              builder: (context) => const MyHomePage(
+                  title: 'Taskify (Active Tasks / Create A Task)')),
         );
       }
     });
@@ -1073,13 +1500,12 @@ class _AuthState extends State<Auth> {
     }
     auth.authStateChanges().listen((User? user) {
       if (user == null) {
-        //print('User is currently signed out!');
       } else {
-        //print('User is signed in!');
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => const MyHomePage(title: 'Taskify')),
+              builder: (context) => const MyHomePage(
+                  title: 'Taskify (Active Tasks / Create A Task)')),
         );
       }
     });
@@ -1089,7 +1515,7 @@ class _AuthState extends State<Auth> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login / Sign Up'),
+        title: const Text('Taskify (Register / Sign In)'),
         automaticallyImplyLeading: false,
       ),
       body: Center(
